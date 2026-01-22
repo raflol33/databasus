@@ -13,6 +13,8 @@ type Backup struct {
 	DatabaseID uuid.UUID `json:"databaseId" gorm:"column:database_id;type:uuid;not null"`
 	StorageID  uuid.UUID `json:"storageId"  gorm:"column:storage_id;type:uuid;not null"`
 
+	Type BackupType `json:"type" gorm:"column:type;type:text;not null;default:'LOGICAL'"`
+
 	Status      BackupStatus `json:"status"      gorm:"column:status;not null"`
 	FailMessage *string      `json:"failMessage" gorm:"column:fail_message"`
 	IsSkipRetry bool         `json:"isSkipRetry" gorm:"column:is_skip_retry;type:boolean;not null"`
