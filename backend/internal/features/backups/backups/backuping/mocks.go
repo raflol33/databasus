@@ -33,6 +33,7 @@ type CreateFailedBackupUsecase struct{}
 func (uc *CreateFailedBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
@@ -47,6 +48,7 @@ type CreateSuccessBackupUsecase struct{}
 func (uc *CreateSuccessBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
@@ -66,6 +68,7 @@ type CreateLargeBackupUsecase struct{}
 func (uc *CreateLargeBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
@@ -85,6 +88,7 @@ type CreateProgressiveBackupUsecase struct{}
 func (uc *CreateProgressiveBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
@@ -125,6 +129,7 @@ type CreateMediumBackupUsecase struct{}
 func (uc *CreateMediumBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
@@ -153,6 +158,7 @@ func NewMockTrackingBackupUsecase() *MockTrackingBackupUsecase {
 func (m *MockTrackingBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
