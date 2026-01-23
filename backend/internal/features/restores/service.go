@@ -103,9 +103,7 @@ func (s *RestoreService) RestoreBackupWithAuth(
 	}
 
 	if backup.Type == backups_core.BackupTypePITR {
-		return errors.New(
-			"PITR backups require physical restore and are not supported via pg_restore",
-		)
+		return errors.New("PITR backups require physical restore and are not supported via pg_restore")
 	}
 
 	database, err := s.databaseService.GetDatabaseByID(backup.DatabaseID)
