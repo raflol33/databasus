@@ -72,11 +72,14 @@ func (uc *CreatePostgresqlPitrBackupUsecase) Execute(
 		ctx,
 		backupID,
 		backupConfig,
-		tools.GetPostgresqlExecutable(
+		uc.resolvePgBasebackupPath(
+			tools.GetPostgresqlExecutable(
+				pg.Version,
+				"pg_basebackup",
+				config.GetEnv().EnvMode,
+				config.GetEnv().PostgresesInstallDir,
+			),
 			pg.Version,
-			"pg_basebackup",
-			config.GetEnv().EnvMode,
-			config.GetEnv().PostgresesInstallDir,
 		),
 		uc.buildPgBasebackupArgs(pg),
 		decryptedPassword,
@@ -514,6 +517,39 @@ func (uc *CreatePostgresqlPitrBackupUsecase) checkCancellationReason() error {
 		return fmt.Errorf("backup cancelled due to shutdown")
 	}
 	return fmt.Errorf("backup cancelled")
+}
+
+func (uc *CreatePostgresqlPitrBackupUsecase) resolvePgBasebackupPath(
+	pgBin string,
+	version tools.PostgresqlVersion,
+) string {
+	if _, err := os.Stat(pgBin); err == nil {
+		return pgBin
+	}
+
+	fallbackBin, err := exec.LookPath("pg_basebackup")
+	if err == nil {
+		uc.logger.Warn(
+			"pg_basebackup not found for requested PostgreSQL version, falling back to PATH",
+			"version",
+			version,
+			"fallback",
+			fallbackBin,
+			"requestedPath",
+			pgBin,
+		)
+		return fallbackBin
+	}
+
+	uc.logger.Error(
+		"pg_basebackup not found for requested PostgreSQL version",
+		"version",
+		version,
+		"requestedPath",
+		pgBin,
+	)
+
+	return pgBin
 }
 
 func (uc *CreatePostgresqlPitrBackupUsecase) createTempPgpassFile(
