@@ -96,7 +96,7 @@ func (uc *CreatePostgresqlPitrBackupUsecase) buildPgBasebackupArgs(
 		"-D", "-",
 		"-Ft",
 		"-Z", strconv.Itoa(pitrCompressionLevel),
-		"-X", "stream",
+		"-X", "fetch",
 		"--no-password",
 		"-h", pg.Host,
 		"-p", strconv.Itoa(pg.Port),
