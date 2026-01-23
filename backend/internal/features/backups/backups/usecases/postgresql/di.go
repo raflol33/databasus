@@ -12,6 +12,16 @@ var createPostgresqlBackupUsecase = &CreatePostgresqlBackupUsecase{
 	encryption.GetFieldEncryptor(),
 }
 
+var createPostgresqlPitrBackupUsecase = &CreatePostgresqlPitrBackupUsecase{
+	logger.GetLogger(),
+	secrets.GetSecretKeyService(),
+	encryption.GetFieldEncryptor(),
+}
+
 func GetCreatePostgresqlBackupUsecase() *CreatePostgresqlBackupUsecase {
 	return createPostgresqlBackupUsecase
+}
+
+func GetCreatePostgresqlPitrBackupUsecase() *CreatePostgresqlPitrBackupUsecase {
+	return createPostgresqlPitrBackupUsecase
 }

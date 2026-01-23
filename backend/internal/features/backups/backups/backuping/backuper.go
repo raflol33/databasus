@@ -197,6 +197,7 @@ func (n *BackuperNode) MakeBackup(backupID uuid.UUID, isCallNotifier bool) {
 	backupMetadata, err := n.createBackupUseCase.Execute(
 		ctx,
 		backup.ID,
+		backup.Type,
 		backupConfig,
 		database,
 		storage,

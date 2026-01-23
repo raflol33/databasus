@@ -8,3 +8,10 @@ const (
 	BackupStatusFailed     BackupStatus = "FAILED"
 	BackupStatusCanceled   BackupStatus = "CANCELED"
 )
+
+type BackupType string
+
+const (
+	BackupTypeLogical BackupType = "LOGICAL"
+	BackupTypePITR    BackupType = "PITR"
+)
