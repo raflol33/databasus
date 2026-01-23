@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { type BackupConfig, backupConfigApi, backupsApi } from '../../../entity/backups';
+import { BackupType, type BackupConfig, backupConfigApi, backupsApi } from '../../../entity/backups';
 import {
   type Database,
   DatabaseType,
@@ -81,7 +81,7 @@ export const CreateDatabaseComponent = ({ workspaceId, onCreated, onClose }: Pro
       backupConfig.databaseId = createdDatabase.id;
       await backupConfigApi.saveBackupConfig(backupConfig);
       if (backupConfig.isBackupsEnabled) {
-        await backupsApi.makeBackup(createdDatabase.id);
+        await backupsApi.makeBackup(createdDatabase.id, BackupType.LOGICAL);
       }
 
       onCreated(createdDatabase.id);

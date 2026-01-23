@@ -19,6 +19,7 @@ import {
   type BackupConfig,
   BackupEncryption,
   BackupStatus,
+  BackupType,
   backupConfigApi,
   backupsApi,
 } from '../../../entity/backups';
@@ -154,11 +155,11 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
     isLazyLoadInProgress.current = false;
   };
 
-  const makeBackup = async () => {
+  const makeBackup = async (backupType: BackupType) => {
     setIsMakeBackupRequestLoading(true);
 
     try {
-      await backupsApi.makeBackup(database.id);
+      await backupsApi.makeBackup(database.id, backupType);
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setCurrentLimit(BACKUPS_PAGE_SIZE);
       setHasMore(true);
@@ -363,29 +364,42 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
                   </Tooltip>
                 )}
 
-                <Tooltip title="Restore from backup">
-                  <CloudUploadOutlined
-                    className="cursor-pointer"
-                    onClick={() => {
-                      setShowingRestoresBackupId(record.id);
-                    }}
-                    style={{
-                      color: '#155dfc',
-                    }}
-                  />
-                </Tooltip>
+                {record.type === BackupType.PITR ? (
+                  <Tooltip title="PITR backups require physical restore outside the UI.">
+                    <CloudUploadOutlined
+                      className="cursor-not-allowed opacity-50"
+                      style={{
+                        color: '#155dfc',
+                      }}
+                    />
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Restore from backup">
+                    <CloudUploadOutlined
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setShowingRestoresBackupId(record.id);
+                      }}
+                      style={{
+                        color: '#155dfc',
+                      }}
+                    />
+                  </Tooltip>
+                )}
 
                 <Tooltip
                   title={
-                    database.type === DatabaseType.POSTGRES
-                      ? 'Download backup file. It can be restored manually via pg_restore (from custom format)'
-                      : database.type === DatabaseType.MYSQL
-                        ? 'Download backup file. It can be restored manually via mysql client (from SQL dump)'
-                        : database.type === DatabaseType.MARIADB
-                          ? 'Download backup file. It can be restored manually via mariadb client (from SQL dump)'
-                          : database.type === DatabaseType.MONGODB
-                            ? 'Download backup file. It can be restored manually via mongorestore (from archive)'
-                            : 'Download backup file'
+                    record.type === BackupType.PITR && database.type === DatabaseType.POSTGRES
+                      ? 'Download base backup (pg_basebackup tar). PITR restore requires manual physical restore steps.'
+                      : database.type === DatabaseType.POSTGRES
+                        ? 'Download backup file. It can be restored manually via pg_restore (from custom format)'
+                        : database.type === DatabaseType.MYSQL
+                          ? 'Download backup file. It can be restored manually via mysql client (from SQL dump)'
+                          : database.type === DatabaseType.MARIADB
+                            ? 'Download backup file. It can be restored manually via mariadb client (from SQL dump)'
+                            : database.type === DatabaseType.MONGODB
+                              ? 'Download backup file. It can be restored manually via mongorestore (from archive)'
+                              : 'Download backup file'
                   }
                 >
                   {downloadingBackupId === record.id ? (
@@ -478,6 +492,24 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
       onFilter: (value, record) => record.status === value,
     },
     {
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
+      width: 160,
+      render: (type: BackupType) => (type === BackupType.PITR ? 'Full + PITR' : 'Full'),
+      filters: [
+        {
+          value: BackupType.LOGICAL,
+          text: 'Full',
+        },
+        {
+          value: BackupType.PITR,
+          text: 'Full + PITR',
+        },
+      ],
+      onFilter: (value, record) => record.type === value,
+    },
+    {
       title: (
         <div className="flex items-center">
           Size
@@ -529,10 +561,9 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
 
       <div className="mt-5" />
 
-      <div className="flex">
+      <div className="flex flex-wrap gap-2">
         <Button
-          onClick={makeBackup}
-          className="mr-1"
+          onClick={() => makeBackup(BackupType.LOGICAL)}
           type="primary"
           disabled={isMakeBackupRequestLoading}
           loading={isMakeBackupRequestLoading}
@@ -540,6 +571,18 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
           <span className="md:hidden">Backup now</span>
           <span className="hidden md:inline">Make backup right now</span>
         </Button>
+        {database.type === DatabaseType.POSTGRES && (
+          <Tooltip title="Creates a physical base backup (pg_basebackup) for PITR workflows.">
+            <Button
+              onClick={() => makeBackup(BackupType.PITR)}
+              disabled={isMakeBackupRequestLoading}
+              loading={isMakeBackupRequestLoading}
+            >
+              <span className="md:hidden">Backup + PITR</span>
+              <span className="hidden md:inline">Make backup + PITR</span>
+            </Button>
+          </Tooltip>
+        )}
       </div>
 
       <div className="mt-5 w-full md:max-w-[850px]">
@@ -579,6 +622,12 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
                         <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>
                         <div className="text-sm font-medium">
                           {formatDuration(backup.backupDurationMs)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Type</div>
+                        <div className="text-sm font-medium">
+                          {backup.type === BackupType.PITR ? 'Full + PITR' : 'Full'}
                         </div>
                       </div>
                     </div>

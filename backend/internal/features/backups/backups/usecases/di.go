@@ -9,6 +9,7 @@ import (
 
 var createBackupUsecase = &CreateBackupUsecase{
 	usecases_postgresql.GetCreatePostgresqlBackupUsecase(),
+	usecases_postgresql.GetCreatePostgresqlPitrBackupUsecase(),
 	usecases_mysql.GetCreateMysqlBackupUsecase(),
 	usecases_mariadb.GetCreateMariadbBackupUsecase(),
 	usecases_mongodb.GetCreateMongodbBackupUsecase(),

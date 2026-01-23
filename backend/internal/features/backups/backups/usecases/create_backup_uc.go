@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	common "databasus-backend/internal/features/backups/backups/common"
+	backups_core "databasus-backend/internal/features/backups/backups/core"
 	usecases_mariadb "databasus-backend/internal/features/backups/backups/usecases/mariadb"
 	usecases_mongodb "databasus-backend/internal/features/backups/backups/usecases/mongodb"
 	usecases_mysql "databasus-backend/internal/features/backups/backups/usecases/mysql"
@@ -17,22 +18,39 @@ import (
 )
 
 type CreateBackupUsecase struct {
-	CreatePostgresqlBackupUsecase *usecases_postgresql.CreatePostgresqlBackupUsecase
-	CreateMysqlBackupUsecase      *usecases_mysql.CreateMysqlBackupUsecase
-	CreateMariadbBackupUsecase    *usecases_mariadb.CreateMariadbBackupUsecase
-	CreateMongodbBackupUsecase    *usecases_mongodb.CreateMongodbBackupUsecase
+	CreatePostgresqlBackupUsecase     *usecases_postgresql.CreatePostgresqlBackupUsecase
+	CreatePostgresqlPitrBackupUsecase *usecases_postgresql.CreatePostgresqlPitrBackupUsecase
+	CreateMysqlBackupUsecase          *usecases_mysql.CreateMysqlBackupUsecase
+	CreateMariadbBackupUsecase        *usecases_mariadb.CreateMariadbBackupUsecase
+	CreateMongodbBackupUsecase        *usecases_mongodb.CreateMongodbBackupUsecase
 }
 
 func (uc *CreateBackupUsecase) Execute(
 	ctx context.Context,
 	backupID uuid.UUID,
+	backupType backups_core.BackupType,
 	backupConfig *backups_config.BackupConfig,
 	database *databases.Database,
 	storage *storages.Storage,
 	backupProgressListener func(completedMBs float64),
 ) (*common.BackupMetadata, error) {
+	if backupType == backups_core.BackupTypePITR &&
+		database.Type != databases.DatabaseTypePostgres {
+		return nil, errors.New("PITR backups are only supported for PostgreSQL databases")
+	}
+
 	switch database.Type {
 	case databases.DatabaseTypePostgres:
+		if backupType == backups_core.BackupTypePITR {
+			return uc.CreatePostgresqlPitrBackupUsecase.Execute(
+				ctx,
+				backupID,
+				backupConfig,
+				database,
+				storage,
+				backupProgressListener,
+			)
+		}
 		return uc.CreatePostgresqlBackupUsecase.Execute(
 			ctx,
 			backupID,

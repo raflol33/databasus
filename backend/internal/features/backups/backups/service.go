@@ -74,6 +74,7 @@ func (s *BackupService) OnBeforeDatabaseRemove(databaseID uuid.UUID) error {
 func (s *BackupService) MakeBackupWithAuth(
 	user *users_models.User,
 	databaseID uuid.UUID,
+	backupType backups_core.BackupType,
 ) error {
 	database, err := s.databaseService.GetDatabaseByID(databaseID)
 	if err != nil {
@@ -92,10 +93,23 @@ func (s *BackupService) MakeBackupWithAuth(
 		return errors.New("insufficient permissions to create backup for this database")
 	}
 
-	s.backupSchedulerService.StartBackup(databaseID, true)
+	if backupType == "" {
+		backupType = backups_core.BackupTypeLogical
+	}
+
+	if backupType == backups_core.BackupTypePITR &&
+		database.Type != databases.DatabaseTypePostgres {
+		return errors.New("PITR backups are only supported for PostgreSQL databases")
+	}
+
+	s.backupSchedulerService.StartBackup(databaseID, true, backupType)
 
 	s.auditLogService.WriteAuditLog(
-		fmt.Sprintf("Backup manually initiated for database: %s", database.Name),
+		fmt.Sprintf(
+			"Backup manually initiated for database: %s (type: %s)",
+			database.Name,
+			backupType,
+		),
 		&user.ID,
 		database.WorkspaceID,
 	)
@@ -522,15 +536,21 @@ func (s *BackupService) generateBackupFilename(
 ) string {
 	timestamp := backup.CreatedAt.Format("2006-01-02_15-04-05")
 	safeName := sanitizeFilename(database.Name)
-	extension := s.getBackupExtension(database.Type)
+	extension := s.getBackupExtension(database.Type, backup.Type)
 	return fmt.Sprintf("%s_backup_%s%s", safeName, timestamp, extension)
 }
 
-func (s *BackupService) getBackupExtension(dbType databases.DatabaseType) string {
+func (s *BackupService) getBackupExtension(
+	dbType databases.DatabaseType,
+	backupType backups_core.BackupType,
+) string {
 	switch dbType {
 	case databases.DatabaseTypeMysql, databases.DatabaseTypeMariadb:
 		return ".sql.zst"
 	case databases.DatabaseTypePostgres:
+		if backupType == backups_core.BackupTypePITR {
+			return ".tar.gz"
+		}
 		return ".dump"
 	case databases.DatabaseTypeMongodb:
 		return ".archive"
