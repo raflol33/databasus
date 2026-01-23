@@ -492,7 +492,7 @@ func Test_CheckDeadNodesAndFailBackups_WhenNodeDies_FailsBackupAndCleansUpRegist
 	assert.NoError(t, err)
 
 	// Scheduler assigns backup to mock node
-	GetBackupsScheduler().StartBackup(database.ID, false)
+	GetBackupsScheduler().StartBackup(database.ID, false, backups_core.BackupTypeLogical)
 	time.Sleep(100 * time.Millisecond)
 
 	backups, err := backupRepository.FindByDatabaseID(database.ID)
@@ -595,7 +595,7 @@ func Test_OnBackupCompleted_WhenTaskIsNotBackup_SkipsProcessing(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start a backup and assign it to the node
-	GetBackupsScheduler().StartBackup(database.ID, false)
+	GetBackupsScheduler().StartBackup(database.ID, false, backups_core.BackupTypeLogical)
 	time.Sleep(100 * time.Millisecond)
 
 	backups, err := backupRepository.FindByDatabaseID(database.ID)
@@ -892,7 +892,7 @@ func Test_StartBackup_WhenBackupCompletes_DecrementsActiveTaskCount(t *testing.T
 	t.Logf("Initial active tasks: %d", initialActiveTasks)
 
 	// Start backup
-	scheduler.StartBackup(database.ID, false)
+	scheduler.StartBackup(database.ID, false, backups_core.BackupTypeLogical)
 
 	// Wait for backup to complete
 	WaitForBackupCompletion(t, database.ID, 0, 10*time.Second)
@@ -995,7 +995,7 @@ func Test_StartBackup_WhenBackupFails_DecrementsActiveTaskCount(t *testing.T) {
 	t.Logf("Initial active tasks: %d", initialActiveTasks)
 
 	// Start backup
-	scheduler.StartBackup(database.ID, false)
+	scheduler.StartBackup(database.ID, false, backups_core.BackupTypeLogical)
 
 	// Wait for backup to fail
 	WaitForBackupCompletion(t, database.ID, 0, 10*time.Second)
@@ -1088,7 +1088,7 @@ func Test_StartBackup_WhenBackupAlreadyInProgress_SkipsNewBackup(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Try to start a new backup - should be skipped
-	GetBackupsScheduler().StartBackup(database.ID, false)
+	GetBackupsScheduler().StartBackup(database.ID, false, backups_core.BackupTypeLogical)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -1268,10 +1268,10 @@ func Test_StartBackup_When2BackupsStartedForDifferentDatabases_BothUseCasesAreCa
 
 	// Start 2 backups simultaneously
 	t.Log("Starting backup for database1")
-	scheduler.StartBackup(database1.ID, false)
+	scheduler.StartBackup(database1.ID, false, backups_core.BackupTypeLogical)
 
 	t.Log("Starting backup for database2")
-	scheduler.StartBackup(database2.ID, false)
+	scheduler.StartBackup(database2.ID, false, backups_core.BackupTypeLogical)
 
 	// Wait up to 10 seconds for both backups to complete
 	t.Log("Waiting for both backups to complete...")
