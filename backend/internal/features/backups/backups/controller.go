@@ -99,7 +99,17 @@ func (c *BackupController) MakeBackup(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.backupService.MakeBackupWithAuth(user, request.DatabaseID); err != nil {
+	if request.BackupType == "" {
+		request.BackupType = backups_core.BackupTypeLogical
+	}
+
+	if request.BackupType != backups_core.BackupTypeLogical &&
+		request.BackupType != backups_core.BackupTypePITR {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid backup_type"})
+		return
+	}
+
+	if err := c.backupService.MakeBackupWithAuth(user, request.DatabaseID, request.BackupType); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -311,7 +321,8 @@ func (c *BackupController) GetFile(ctx *gin.Context) {
 }
 
 type MakeBackupRequest struct {
-	DatabaseID uuid.UUID `json:"database_id" binding:"required"`
+	DatabaseID uuid.UUID               `json:"database_id" binding:"required"`
+	BackupType backups_core.BackupType `json:"backup_type"`
 }
 
 func (c *BackupController) generateBackupFilename(
@@ -325,19 +336,22 @@ func (c *BackupController) generateBackupFilename(
 	safeName := sanitizeFilename(database.Name)
 
 	// Determine extension based on database type
-	extension := c.getBackupExtension(database.Type)
+	extension := c.getBackupExtension(database.Type, backup.Type)
 
 	return fmt.Sprintf("%s_backup_%s%s", safeName, timestamp, extension)
 }
 
 func (c *BackupController) getBackupExtension(
 	dbType databases.DatabaseType,
+	backupType backups_core.BackupType,
 ) string {
 	switch dbType {
 	case databases.DatabaseTypeMysql, databases.DatabaseTypeMariadb:
 		return ".sql.zst"
 	case databases.DatabaseTypePostgres:
-		// PostgreSQL custom format
+		if backupType == backups_core.BackupTypePITR {
+			return ".tar.gz"
+		}
 		return ".dump"
 	case databases.DatabaseTypeMongodb:
 		return ".archive"

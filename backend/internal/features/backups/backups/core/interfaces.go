@@ -24,6 +24,7 @@ type CreateBackupUsecase interface {
 	Execute(
 		ctx context.Context,
 		backupID uuid.UUID,
+		backupType BackupType,
 		backupConfig *backups_config.BackupConfig,
 		database *databases.Database,
 		storage *storages.Storage,

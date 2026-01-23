@@ -146,7 +146,15 @@ func (s *BackupsScheduler) failBackupsInProgress() error {
 	return nil
 }
 
-func (s *BackupsScheduler) StartBackup(databaseID uuid.UUID, isCallNotifier bool) {
+func (s *BackupsScheduler) StartBackup(
+	databaseID uuid.UUID,
+	isCallNotifier bool,
+	backupType backups_core.BackupType,
+) {
+	if backupType == "" {
+		backupType = backups_core.BackupTypeLogical
+	}
+
 	backupConfig, err := s.backupConfigService.GetBackupConfigByDbId(databaseID)
 	if err != nil {
 		s.logger.Error("Failed to get backup config by database ID", "error", err)
@@ -200,6 +208,7 @@ func (s *BackupsScheduler) StartBackup(databaseID uuid.UUID, isCallNotifier bool
 	backup := &backups_core.Backup{
 		DatabaseID:   backupConfig.DatabaseID,
 		StorageID:    *backupConfig.StorageID,
+		Type:         backupType,
 		Status:       backups_core.BackupStatusInProgress,
 		BackupSizeMb: 0,
 		CreatedAt:    time.Now().UTC(),
@@ -361,7 +370,7 @@ func (s *BackupsScheduler) runPendingBackups() error {
 				backupConfig.BackupInterval.Interval,
 			)
 
-			s.StartBackup(backupConfig.DatabaseID, remainedBackupTryCount == 1)
+			s.StartBackup(backupConfig.DatabaseID, remainedBackupTryCount == 1, backups_core.BackupTypeLogical)
 			continue
 		}
 	}
