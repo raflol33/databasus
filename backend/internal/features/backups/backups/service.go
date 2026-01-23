@@ -97,14 +97,19 @@ func (s *BackupService) MakeBackupWithAuth(
 		backupType = backups_core.BackupTypeLogical
 	}
 
-	if backupType == backups_core.BackupTypePITR && database.Type != databases.DatabaseTypePostgres {
+	if backupType == backups_core.BackupTypePITR &&
+		database.Type != databases.DatabaseTypePostgres {
 		return errors.New("PITR backups are only supported for PostgreSQL databases")
 	}
 
 	s.backupSchedulerService.StartBackup(databaseID, true, backupType)
 
 	s.auditLogService.WriteAuditLog(
-		fmt.Sprintf("Backup manually initiated for database: %s (type: %s)", database.Name, backupType),
+		fmt.Sprintf(
+			"Backup manually initiated for database: %s (type: %s)",
+			database.Name,
+			backupType,
+		),
 		&user.ID,
 		database.WorkspaceID,
 	)

@@ -38,6 +38,7 @@ type BackuperNode struct {
 	notificationSender  backups_core.NotificationSender
 	backupCancelManager *tasks_cancellation.TaskCancelManager
 	backupNodesRegistry *BackupNodesRegistry
+	walReceiverService  *WalReceiverService
 	logger              *slog.Logger
 	createBackupUseCase backups_core.CreateBackupUsecase
 	nodeID              uuid.UUID
@@ -320,6 +321,12 @@ func (n *BackuperNode) MakeBackup(backupID uuid.UUID, isCallNotifier bool) {
 	if err := n.backupRepository.Save(backup); err != nil {
 		n.logger.Error("Failed to save backup", "error", err)
 		return
+	}
+
+	if backup.Type == backups_core.BackupTypePITR {
+		if err := n.walReceiverService.StartForBackup(backup, database); err != nil {
+			n.logger.Error("Failed to start WAL receiver", "error", err)
+		}
 	}
 
 	// Update database last backup time

@@ -224,7 +224,11 @@ func (uc *CreatePostgresqlPitrBackupUsecase) streamToStorage(
 		if err := uc.checkCancellation(ctx); err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("pg_basebackup failed: %v – stderr: %s", waitErr, string(stderrOutput))
+		return nil, fmt.Errorf(
+			"pg_basebackup failed: %v – stderr: %s",
+			waitErr,
+			string(stderrOutput),
+		)
 	case copyErr != nil:
 		if err := uc.checkCancellation(ctx); err != nil {
 			return nil, err

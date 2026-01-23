@@ -370,7 +370,11 @@ func (s *BackupsScheduler) runPendingBackups() error {
 				backupConfig.BackupInterval.Interval,
 			)
 
-			s.StartBackup(backupConfig.DatabaseID, remainedBackupTryCount == 1, backups_core.BackupTypeLogical)
+			s.StartBackup(
+				backupConfig.DatabaseID,
+				remainedBackupTryCount == 1,
+				backups_core.BackupTypeLogical,
+			)
 			continue
 		}
 	}
