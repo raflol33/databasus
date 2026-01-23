@@ -17,6 +17,10 @@ func (r *BackupRepository) Save(backup *Backup) error {
 		return errors.New("database ID and storage ID are required")
 	}
 
+	if backup.Type == "" {
+		backup.Type = BackupTypeLogical
+	}
+
 	db := storage.GetDb()
 
 	isNew := backup.ID == uuid.Nil

@@ -13,11 +13,14 @@ type Backup struct {
 	DatabaseID uuid.UUID `json:"databaseId" gorm:"column:database_id;type:uuid;not null"`
 	StorageID  uuid.UUID `json:"storageId"  gorm:"column:storage_id;type:uuid;not null"`
 
+	Type BackupType `json:"type" gorm:"column:type;type:text;not null;default:'LOGICAL'"`
+
 	Status      BackupStatus `json:"status"      gorm:"column:status;not null"`
 	FailMessage *string      `json:"failMessage" gorm:"column:fail_message"`
 	IsSkipRetry bool         `json:"isSkipRetry" gorm:"column:is_skip_retry;type:boolean;not null"`
 
 	BackupSizeMb float64 `json:"backupSizeMb" gorm:"column:backup_size_mb;default:0"`
+	WalSizeMb    float64 `json:"walSizeMb"    gorm:"-"`
 
 	BackupDurationMs int64 `json:"backupDurationMs" gorm:"column:backup_duration_ms;default:0"`
 

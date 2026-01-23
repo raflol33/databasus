@@ -12,6 +12,7 @@ import (
 	backups_core "databasus-backend/internal/features/backups/backups/core"
 	backups_download "databasus-backend/internal/features/backups/backups/download"
 	"databasus-backend/internal/features/backups/backups/encryption"
+	backups_wal "databasus-backend/internal/features/backups/backups/wal"
 	backups_config "databasus-backend/internal/features/backups/config"
 	"databasus-backend/internal/features/databases"
 	encryption_secrets "databasus-backend/internal/features/encryption/secrets"
@@ -47,6 +48,7 @@ type BackupService struct {
 	downloadTokenService   *backups_download.DownloadTokenService
 	backupSchedulerService *backuping.BackupsScheduler
 	backupCleaner          *backuping.BackupCleaner
+	backupWalRepository    *backups_wal.BackupWalRepository
 }
 
 func (s *BackupService) AddBackupRemoveListener(listener backups_core.BackupRemoveListener) {
@@ -74,6 +76,7 @@ func (s *BackupService) OnBeforeDatabaseRemove(databaseID uuid.UUID) error {
 func (s *BackupService) MakeBackupWithAuth(
 	user *users_models.User,
 	databaseID uuid.UUID,
+	backupType backups_core.BackupType,
 ) error {
 	database, err := s.databaseService.GetDatabaseByID(databaseID)
 	if err != nil {
@@ -92,10 +95,23 @@ func (s *BackupService) MakeBackupWithAuth(
 		return errors.New("insufficient permissions to create backup for this database")
 	}
 
-	s.backupSchedulerService.StartBackup(databaseID, true)
+	if backupType == "" {
+		backupType = backups_core.BackupTypeLogical
+	}
+
+	if backupType == backups_core.BackupTypePITR &&
+		database.Type != databases.DatabaseTypePostgres {
+		return errors.New("PITR backups are only supported for PostgreSQL databases")
+	}
+
+	s.backupSchedulerService.StartBackup(databaseID, true, backupType)
 
 	s.auditLogService.WriteAuditLog(
-		fmt.Sprintf("Backup manually initiated for database: %s", database.Name),
+		fmt.Sprintf(
+			"Backup manually initiated for database: %s (type: %s)",
+			database.Name,
+			backupType,
+		),
 		&user.ID,
 		database.WorkspaceID,
 	)
@@ -134,6 +150,10 @@ func (s *BackupService) GetBackups(
 
 	backups, err := s.backupRepository.FindByDatabaseIDWithPagination(databaseID, limit, offset)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.populateWalSizes(backups); err != nil {
 		return nil, err
 	}
 
@@ -516,21 +536,49 @@ func (s *BackupService) UnregisterDownload(userID uuid.UUID) {
 	s.downloadTokenService.UnregisterDownload(userID)
 }
 
+func (s *BackupService) populateWalSizes(backups []*backups_core.Backup) error {
+	if len(backups) == 0 || s.backupWalRepository == nil {
+		return nil
+	}
+
+	backupIDs := make([]uuid.UUID, 0, len(backups))
+	for _, backup := range backups {
+		backupIDs = append(backupIDs, backup.ID)
+	}
+
+	walSizes, err := s.backupWalRepository.SumByBackupIDs(backupIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, backup := range backups {
+		backup.WalSizeMb = walSizes[backup.ID]
+	}
+
+	return nil
+}
+
 func (s *BackupService) generateBackupFilename(
 	backup *backups_core.Backup,
 	database *databases.Database,
 ) string {
 	timestamp := backup.CreatedAt.Format("2006-01-02_15-04-05")
 	safeName := sanitizeFilename(database.Name)
-	extension := s.getBackupExtension(database.Type)
+	extension := s.getBackupExtension(database.Type, backup.Type)
 	return fmt.Sprintf("%s_backup_%s%s", safeName, timestamp, extension)
 }
 
-func (s *BackupService) getBackupExtension(dbType databases.DatabaseType) string {
+func (s *BackupService) getBackupExtension(
+	dbType databases.DatabaseType,
+	backupType backups_core.BackupType,
+) string {
 	switch dbType {
 	case databases.DatabaseTypeMysql, databases.DatabaseTypeMariadb:
 		return ".sql.zst"
 	case databases.DatabaseTypePostgres:
+		if backupType == backups_core.BackupTypePITR {
+			return ".tar.gz"
+		}
 		return ".dump"
 	case databases.DatabaseTypeMongodb:
 		return ".archive"
