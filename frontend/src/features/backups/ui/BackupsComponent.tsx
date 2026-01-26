@@ -446,6 +446,14 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
     return `${minutes}m ${seconds}s`;
   };
 
+  const formatWalSize = (sizeMb: number, backupType: BackupType) => {
+    if (backupType !== BackupType.PITR) {
+      return '—';
+    }
+
+    return formatSize(sizeMb);
+  };
+
   const columns: ColumnsType<Backup> = [
     {
       title: 'Created at',
@@ -525,6 +533,20 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
       key: 'backupSizeMb',
       width: 150,
       render: (sizeMb: number) => formatSize(sizeMb),
+    },
+    {
+      title: (
+        <div className="flex items-center">
+          WAL size
+          <Tooltip className="ml-1" title="Total size of WAL segments collected for PITR backups.">
+            <InfoCircleOutlined />
+          </Tooltip>
+        </div>
+      ),
+      dataIndex: 'walSizeMb',
+      key: 'walSizeMb',
+      width: 150,
+      render: (_, record: Backup) => formatWalSize(record.walSizeMb, record.type),
     },
     {
       title: 'Duration',
@@ -617,6 +639,12 @@ export const BackupsComponent = ({ database, isCanManageDBs, scrollContainerRef 
                       <div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">Size</div>
                         <div className="text-sm font-medium">{formatSize(backup.backupSizeMb)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">WAL size</div>
+                        <div className="text-sm font-medium">
+                          {formatWalSize(backup.walSizeMb, backup.type)}
+                        </div>
                       </div>
                       <div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>

@@ -16,6 +16,7 @@ export interface Backup {
   type: BackupType;
 
   backupSizeMb: number;
+  walSizeMb: number;
 
   backupDurationMs: number;
 

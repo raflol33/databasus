@@ -68,6 +68,10 @@ func (s *BackupWalService) CreateWalSegment(
 	return segment, nil
 }
 
+func (s *BackupWalService) SumByBackupIDs(backupIDs []uuid.UUID) (map[uuid.UUID]float64, error) {
+	return s.walRepository.SumByBackupIDs(backupIDs)
+}
+
 func (s *BackupWalService) DeleteWalSegmentsForBackup(backup *backups_core.Backup) error {
 	segments, err := s.walRepository.FindByBackupID(backup.ID)
 	if err != nil {

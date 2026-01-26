@@ -9,6 +9,7 @@ import (
 	backups_core "databasus-backend/internal/features/backups/backups/core"
 	backups_download "databasus-backend/internal/features/backups/backups/download"
 	"databasus-backend/internal/features/backups/backups/usecases"
+	backups_wal "databasus-backend/internal/features/backups/backups/wal"
 	backups_config "databasus-backend/internal/features/backups/config"
 	"databasus-backend/internal/features/databases"
 	encryption_secrets "databasus-backend/internal/features/encryption/secrets"
@@ -42,6 +43,7 @@ var backupService = &BackupService{
 	backups_download.GetDownloadTokenService(),
 	backuping.GetBackupsScheduler(),
 	backuping.GetBackupCleaner(),
+	backups_wal.GetBackupWalRepository(),
 }
 
 var backupController = &BackupController{

@@ -34,8 +34,7 @@ func (uc *CreateBackupUsecase) Execute(
 	storage *storages.Storage,
 	backupProgressListener func(completedMBs float64),
 ) (*common.BackupMetadata, error) {
-	if backupType == backups_core.BackupTypePITR &&
-		database.Type != databases.DatabaseTypePostgres {
+	if backupType == backups_core.BackupTypePITR && database.Type != databases.DatabaseTypePostgres {
 		return nil, errors.New("PITR backups are only supported for PostgreSQL databases")
 	}
 

@@ -12,6 +12,7 @@ import (
 	backups_core "databasus-backend/internal/features/backups/backups/core"
 	backups_download "databasus-backend/internal/features/backups/backups/download"
 	"databasus-backend/internal/features/backups/backups/encryption"
+	backups_wal "databasus-backend/internal/features/backups/backups/wal"
 	backups_config "databasus-backend/internal/features/backups/config"
 	"databasus-backend/internal/features/databases"
 	encryption_secrets "databasus-backend/internal/features/encryption/secrets"
@@ -47,6 +48,7 @@ type BackupService struct {
 	downloadTokenService   *backups_download.DownloadTokenService
 	backupSchedulerService *backuping.BackupsScheduler
 	backupCleaner          *backuping.BackupCleaner
+	backupWalRepository    *backups_wal.BackupWalRepository
 }
 
 func (s *BackupService) AddBackupRemoveListener(listener backups_core.BackupRemoveListener) {
@@ -148,6 +150,10 @@ func (s *BackupService) GetBackups(
 
 	backups, err := s.backupRepository.FindByDatabaseIDWithPagination(databaseID, limit, offset)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.populateWalSizes(backups); err != nil {
 		return nil, err
 	}
 
@@ -528,6 +534,28 @@ func (s *BackupService) IsDownloadInProgress(userID uuid.UUID) bool {
 
 func (s *BackupService) UnregisterDownload(userID uuid.UUID) {
 	s.downloadTokenService.UnregisterDownload(userID)
+}
+
+func (s *BackupService) populateWalSizes(backups []*backups_core.Backup) error {
+	if len(backups) == 0 || s.backupWalRepository == nil {
+		return nil
+	}
+
+	backupIDs := make([]uuid.UUID, 0, len(backups))
+	for _, backup := range backups {
+		backupIDs = append(backupIDs, backup.ID)
+	}
+
+	walSizes, err := s.backupWalRepository.SumByBackupIDs(backupIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, backup := range backups {
+		backup.WalSizeMb = walSizes[backup.ID]
+	}
+
+	return nil
 }
 
 func (s *BackupService) generateBackupFilename(
