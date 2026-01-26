@@ -41,34 +41,6 @@ func (r *BackupWalRepository) FindByBackupID(backupID uuid.UUID) ([]*BackupWalSe
 	return segments, nil
 }
 
-func (r *BackupWalRepository) SumByBackupIDs(backupIDs []uuid.UUID) (map[uuid.UUID]float64, error) {
-	type walSizeResult struct {
-		BackupID       uuid.UUID `gorm:"column:backup_id"`
-		TotalWalSizeMb float64   `gorm:"column:total_wal_size_mb"`
-	}
-
-	if len(backupIDs) == 0 {
-		return map[uuid.UUID]float64{}, nil
-	}
-
-	var results []walSizeResult
-	if err := storage.GetDb().
-		Model(&BackupWalSegment{}).
-		Select("backup_id, COALESCE(SUM(wal_size_mb), 0) AS total_wal_size_mb").
-		Where("backup_id IN ?", backupIDs).
-		Group("backup_id").
-		Scan(&results).Error; err != nil {
-		return nil, err
-	}
-
-	totals := make(map[uuid.UUID]float64, len(results))
-	for _, result := range results {
-		totals[result.BackupID] = result.TotalWalSizeMb
-	}
-
-	return totals, nil
-}
-
 func (r *BackupWalRepository) DeleteByID(id uuid.UUID) error {
 	return storage.GetDb().Delete(&BackupWalSegment{}, "id = ?", id).Error
 }
